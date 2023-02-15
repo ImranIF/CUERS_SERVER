@@ -3,8 +3,8 @@ const express = require('express') //requires the entire express module
 const app = express(); //create express application for us
 // const cookieParser = require('cookie-parser')   // by default, express will not parse cookie, we need to use it in order for cookie middleware function to be registered to our app
 const session = require('express-session')  //imported Express session, will take care of parsing cookies for us, so cookie-parser will not be needed
-const postsRoute = require('./routes/posts')
-const usersRoute = require('./routes/users')
+const postsRoute = require('./posts')
+const usersRoute = require('./users')
 
 const store = new session.MemoryStore() //MemoryStore class existing in module and we're creating an instance of it
 // //use function mounts middleware function at the path which is specified
