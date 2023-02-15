@@ -2,29 +2,30 @@
 const express = require('express') //requires the entire express module
 const app = express(); //create express application for us
 // const cookieParser = require('cookie-parser')   // by default, express will not parse cookie, we need to use it in order for cookie middleware function to be registered to our app
-const session = require('express-session')  //imported Express session, will take care of parsing cookies for us, so cookie-parser will not be needed
+// const session = require('express-session')  //imported Express session, will take care of parsing cookies for us, so cookie-parser will not be needed
 const postsRoute = require('./posts')
 const usersRoute = require('./users')
-
-const store = new session.MemoryStore() //MemoryStore class existing in module and we're creating an instance of it
+const cors = require('cors');
+app.use(cors());
+// const store = new session.MemoryStore() //MemoryStore class existing in module and we're creating an instance of it
 // //use function mounts middleware function at the path which is specified
 
-app.use(session({
-    secret: 'burn them all', //secret is used to sign the session id cookie
-    cookie: {maxAge: 30000 }, //cookies expires after t duration
-    saveUninitialized: false,    //for login system, otherwise going to generate a unique session id every single time they make a request to the server . no cookie because of this false   
-    store   //store : store
-}))
+// app.use(session({
+//     secret: 'burn them all', //secret is used to sign the session id cookie
+//     cookie: {maxAge: 30000 }, //cookies expires after t duration
+//     saveUninitialized: false,    //for login system, otherwise going to generate a unique session id every single time they make a request to the server . no cookie because of this false   
+//     store   //store : store
+// }))
 // app.use(cookieParser())
 //before reaching callback function, detect json payloads, parse them correctly and attach to res.body
 app.use(express.json()) //register json
 app.use(express.urlencoded({extended: false})) //referencing express module; middleware enabled
 
-app.use((req, res, next) =>{    //must invoke the next function
-    console.log(store)
-    console.log(`${req.method} - ${req.url}`)
-    next();     //invoke the next middleware function
-})   //to register middleware function, use the use method, takes in a function
+// app.use((req, res, next) =>{    //must invoke the next function
+//    // console.log(store)
+//     console.log(`${req.method} - ${req.url}`)
+//     next();     //invoke the next middleware function
+// })   //to register middleware function, use the use method, takes in a function
 
 //middleware function allows separating logic into multiple different functions, invoking each in sequential order. refer to /posts route of post method
 
