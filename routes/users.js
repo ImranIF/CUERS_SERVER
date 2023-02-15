@@ -36,10 +36,10 @@ router.get('/posts', (req, res) => {
 })
 
 router.post('/', (req, res) =>{ //every http request made to this endpoint, expects a request body, will have both username and password 
-    const {email, password, role} = req.body;
-    if(email && password){
+    const {evaluator_id, password, role} = req.body;
+    if(evaluator_id && password){
         try{
-        conn.query(`INSERT INTO Login_Info VALUES('${email}', '${password}', '${role}')`)  //create record in database table via query
+        conn.query(`INSERT INTO Login_Info VALUES('${evaluator_id}', '${password}', '${role}')`)  //create record in database table via query
         res.send({msg: 'Created User!'})
         }
         catch(err){
