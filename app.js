@@ -13,7 +13,7 @@ app.use(cors());
 // app.use(session({
 //     secret: 'burn them all', //secret is used to sign the session id cookie
 //     cookie: {maxAge: 30000 }, //cookies expires after t duration
-//     saveUninitialized: false,    //for login system, otherwise going to generate a unique session id every single time they make a request to the server . no cookie because of this false   
+//     saveUninitialized: false,    //for login system, otherwise going to generate a unique session id every single time they make a request to the server . no cookie because of this false
 //     store   //store : store
 // }))
 // app.use(cookieParser())
@@ -58,7 +58,7 @@ app.listen(3000, ()=>{
 // //the callback function will handle every single request that maps to this route
 // //callback function has two parameters, the request object and response object
 // //the response object has a method send that sends a body back to the client
-// app.get('/', (req, res) =>{  
+// app.get('/', (req, res) =>{
 //  res.send({
 //     msg: "Hello!",
 //     user: { }
@@ -103,7 +103,7 @@ app.listen(3000, ()=>{
 // //when we're making a get request, we're asking for resources
 // // the /users is the route path
 // app.get('/users', (req, res) =>{
-//     res.status(200).send(users) 
+//     res.status(200).send(users)
 //     //whenever we make a get request at any endpoint, it will send 200 status code if its successful; if endpoint was not found, it sends 404
 // } )
 
@@ -118,7 +118,7 @@ app.listen(3000, ()=>{
 //         else res.status(404).send("Not found!")
 //     }
 //     res.status(200).send(posts)
-// })  
+// })
 
 // app.get('/users/:parameterUser', (req, res) =>{  //endpoints will never change, :parameter can have any value, can be dynamic
 //     //instead of defining individual routes for each user, we can define a route parameter and use it as data to retrieve a specific user from the database
@@ -148,7 +148,8 @@ app.listen(3000, ()=>{
 //     }
 //     else{
 //         res.status(403).send({msg: 'Not Authenticated'})
-//     }    
+//     }
+
 // }
 
 
@@ -158,21 +159,21 @@ app.listen(3000, ()=>{
 //     res.status(200).json({ msg: "Logged in." })
 // })
 
-// //whenever we log in, it's going to send back a cookie and that cookie is going to be the unique id that server generates. 
+// //whenever we log in, it's going to send back a cookie and that cookie is going to be the unique id that server generates.
 // //good practice is generating a unique session id instead of hardcoding, and save it on the server
 // //every time a request is made through the application, we must check to see if the session id is valid
 
 // app.get('/protected', validateCookie, (req, res) =>{ //another route,pretend we are visiting a protected route
-//     res.status(200).json({ msg: 'You are authorized!'}) //will work, because we have the cookie session id, but what happens if you delete the cookie and try visitng this route without visiting sign-in route? 
-// }) 
+//     res.status(200).json({ msg: 'You are authorized!'}) //will work, because we have the cookie session id, but what happens if you delete the cookie and try visitng this route without visiting sign-in route?
+// })
 
 // app.post('/login', (req, res) =>{
-//     // console.log(req.sessionID)    
+//     // console.log(req.sessionID)
 //     console.log(req.sessionID)
-//     const {username, password} = req.body;  //get credentials from request body 
+//     const {username, password} = req.body;  //get credentials from request body
 //     if(username && password){
 //         if(req.session.authenticated){  //if property exists, that means they (we) have logged in
-//             res.json(req.session)   
+//             res.json(req.session)
 //         }else{
 //             if(password === '123'){
 //                 req.session.authenticated = true    //whenever we successfully login, it modifies the session object and then saves the session into either the database or memory. since session is saved, it also sends to the client
