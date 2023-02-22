@@ -83,7 +83,7 @@ async function loadData(tableName, res) {
       resolve(data);
     });
   });
-}
+} 
 
 async function deleteData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
@@ -125,7 +125,10 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
     console.log(row[primaryKeys[0]]);
     let pkValueString = "";
     for (let i = 0; i < pkLen; i++) {
-      pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      if(dataTypes[primaryKeys[i]].localeCompare("int(11)")==0 )
+        pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      else
+        pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
       if (pkLen - 1 != i) pkValueString += " and ";
     }
     let val = "";
