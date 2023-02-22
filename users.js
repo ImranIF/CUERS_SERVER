@@ -1,4 +1,4 @@
-const { Router } = require("express"); //import Router class
+const { Router, query } = require("express"); //import Router class
 // const db = require('../database')
 const router = Router();
 const express = require("express");
@@ -27,124 +27,207 @@ router.get("/posts", (req, res) => {
   res.json({ route: "Posts" });
 });
 
-// the boss object
-let tableInfo = {};
-
-function processDB(changes, getTableInfo, res) {
-  const { tableName, operation, row, updatedValue } = changes;
-  return new Promise((resolve, reject) => {
-    // to generate the primary keys and data types only at the loading time
-    console.log("Our tableInfo is: ", getTableInfo[tableName]);
-    let query;
-    // let respondSent = false;
-    console.log(operation);
-    //**row should be an array of objects that means an array of rows (comma separated value) , should be string.**
-    let pkValueString = "";
-    if (operation === "update" && operation === "delete") {
-      const pkLen = uniquePrimaryKey?.length;
-      for (let i = 0; i < pkLen - 1; i++) {
-        pkValueString += `${uniquePrimaryKey[i]} = ${row.uniquePrimarykey[i]} and`;
-      }
-      pkValueString += `${uniquePrimaryKey[pkLen - 1]} = ${
-        row.uniquePrimarykey[pkLen - 1]
-      }`;
-    }
-    switch (operation) {
-      case "load":
-        query = `SELECT * FROM ${tableName}`;
-        break;
-      case "insert":
-        console.log(row);
-        let val = "";
-        for (let key in row) {
-          if (row.hasOwnProperty(key)) {
-            val += `${row[key]} ,`;
-          }
+// Loading for the first time is not working {}
+router.post("/loadTableInfo", (req, res) => {
+  const { tableNames } = req.body;
+  let tableInfo = {};
+  let tableDesc = {};
+  const promises = tableNames.map((tableName) => {
+    return new Promise((resolve, reject) => {
+      const query = `desc ${tableName}`;
+      conn.query(query, (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          tableDesc[tableName] = results;
+          resolve();
         }
-        val.slice(0, val.length - 1);
-        console.log(val);
-        query = `INSERT INTO ${tableName} VALUES (${val})`;
-        console.log(query);
-        break;
-      case "update":
-        query = `UPDATE ${tableName} SET ${updatedData} WHERE ${pkValueString}`;
-        // adding pkValueString
-        break;
-      case "delete":
-        query = `DELETE FROM ${tableName} WHERE ${pkValueString}`;
-        break;
-      default: {
-        res.status(400).send("Invalid action");
+      });
+    });
+  });
+  Promise.all(promises)
+    .then(() => {
+      // getting the primary keys of each
+      const tableInfo = {};
+      for (table in tableDesc) {
+        const tempInfo = {};
+        let primaryKeys = [];
+        let dataTypes = {};
+        primaryKeys = tableDesc[table]
+          .filter((item) => item.Key === "PRI")
+          .map((item) => item.Field);
+        tempInfo["primaryKeys"] = primaryKeys;
+        // getting the types;
+        dataTypes = tableDesc[table].reduce((result, { Field, Type }) => {
+          result[Field] = Type;
+          // console.log("The result is:", result);
+          return result;
+        }, {});
+        tempInfo["dataTypes"] = dataTypes;
+        tableInfo[table] = tempInfo;
       }
-    }
-    let data = null;
+      res.json(tableInfo);
+    })
+    .catch((err) => {
+      console.error("Error getting table desc: ", err);
+      res.status(500).send("Internal server Error");
+    });
+});
+
+async function loadData(tableName, res) {
+  return new Promise((resolve, reject) => {
+    const query = `SELECT * FROM ${tableName}`;
     conn.query(query, function (err, result) {
-      // if (err) throw err;
-      //result is an array of RowDataPackets. that is why, it is parsed into object
-      data = Object.values(JSON.parse(JSON.stringify(result)));
-      // data = result;
-      console.log(data);
-      return res.json(data);
+      if (err) return reject(err);
+      const data = Object.values(JSON.parse(JSON.stringify(result)));
+      resolve(data);
     });
   });
 }
 
-router.post("/loadTableInfo", (req, res) => {
-  const { tableNames } = req.body;
-  console.log(tableNames);
-  for (let index = 0; index < tableNames.length; index++) {
-    const currTable = tableNames[index];
-    let tempTableInfo = {};
-    if (tableInfo[currTable] === undefined) {
-      let tempRows = [];
-      let primaryKeys = [],
-        dataTypes = [];
-      conn.query(`desc ${currTable}`, function (err, newData) {
-        // json ->js
-        // newData is an array of RowDataPackets; all rows of a table are instances of same RowDataPacket class - RowDataPacket is a low-level driver library
-        // tempRows is assigned the values of the object, parsed from JSON string.
+async function deleteData(tableName, row, getTableInfo) {
+  return new Promise((resolve, reject) => {
+    const { primaryKeys, dataTypes } = getTableInfo[tableName];
 
-        // generating the primary keys
-        tempRows.splice(0, tempRows.length);
-        tempRows = Object.values(JSON.parse(JSON.stringify(newData)));
-        primaryKeys.splice(0, primaryKeys.length);
-        tempRows.filter((a) =>
-          a.Key == "PRI" ? primaryKeys.push(a.Field) : 0
-        );
-        // now primarykeys array has the primary keys
-        tempTableInfo["primaryKeys"] = primaryKeys;
+    // creating the query
+    let pkLen = primaryKeys.length;
+    console.log("PK LEN IS:", pkLen);
+    console.log(row[primaryKeys[0]]);
+    let pkValueString = "";
 
-        // generating the data types
-        console.log("temprows", tempRows);
-        dataTypes = tempRows.reduce((result, { Field, Type }) => {
-          result[Field] = Type;
-          console.log("The result is:" , result);
-          return result;
-        }, {});
-        tempTableInfo["dataTypes"] = dataTypes;
-        tableInfo[currTable] = tempTableInfo;
-      });
+    // dataTypes[row[primaryKeys[i]] === "int(11)"
+    for (let i = 0; i < pkLen; i++) {
+      if(dataTypes[primaryKeys[i]].localeCompare("int(11)")==0 ){
+        pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      }else{
+        pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
+      }
+      if (pkLen - 1 != i) pkValueString += " and ";
+    }
+
+    // running the query
+    const query = `DELETE FROM ${tableName} WHERE ${pkValueString};`;
+    conn.query(query, function (err, result) {
+      if (err) return reject(err);
+      const data = Object.values(JSON.parse(JSON.stringify(result)));
+      resolve(data);
+    });
+  });
+}
+async function updateData(tableName, row, updatedData, getTableInfo) {
+  return new Promise((resolve, reject) => {
+    const { primaryKeys, dataTypes } = getTableInfo[tableName];
+    const { colType, value } = updatedData;
+
+    // create the query
+    let pkLen = primaryKeys.length;
+    console.log("PK LEN IS:", pkLen);
+    console.log(row[primaryKeys[0]]);
+    let pkValueString = "";
+    for (let i = 0; i < pkLen; i++) {
+      pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      if (pkLen - 1 != i) pkValueString += " and ";
+    }
+    let val = "";
+    if (dataTypes[colType].localeCompare("int(11)") == 0) {
+      val += `${colType} = ${value}`;
+    } else {
+      val += `${colType} =  '${value}'`;
+    }
+    const query = `UPDATE ${tableName} SET ${val} WHERE ${pkValueString};`;
+
+    // run the query
+    conn.query(query, function (err, result) {
+      if (err) return reject(err);
+      const data = Object.values(JSON.parse(JSON.stringify(result)));
+      resolve(data);
+    });
+  });
+}
+
+async function insertData(tableName, row, getTableInfo) {
+  return new Promise((resolve, reject) => {
+    // create the query
+    const { dataTypes } = getTableInfo[tableName];
+    console.log("Get Table INFO: ", getTableInfo[tableName])
+    console.log("ROWS: ", row)
+    let fields = "";
+    let val = "";
+    for (let key in row) {
+      if (row.hasOwnProperty(key)) {
+        fields += `\`${key}\`, `;
+        if (dataTypes[key].localeCompare("int(11)") == 0) {
+          val += `${row[key]}, `;
+        } else {
+          val += `"${row[key]}", `;
+        }
+      }
+    }
+    fields = fields.slice(0, fields.length - 2);
+    val = val.slice(0, val.length - 2);
+    const query = `INSERT INTO ${tableName} (${fields}) VALUES (${val});`;
+
+    console.log("Insertion", query);
+    // run the query
+    conn.query(query, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        const data = Object.values(JSON.parse(JSON.stringify(result)));
+        resolve(data);
+      }
+    });
+  });
+}
+
+async function processData(changes, getTableInfo) {
+  console.log("passed tableInfo: ", getTableInfo);
+  const { tableName, row, operation, updatedData } = changes;
+  if (operation === "load") {
+    try {
+      const data = await loadData(tableName);
+      return data;
+    } catch (err) {
+      console.error(err);
+      throw new Error("Error loading data");
+    }
+  } else if (operation === "insert") {
+    try {
+      const data = await insertData(tableName, row, getTableInfo);
+      console.log("Insertion status: ", data);
+      return { msg: "Added a new row" };
+    } catch (err) {
+      console.error(err);
+      throw new Error("Error inserting data");
+    }
+  } else if (operation === "delete") {
+    try {
+      const data = await deleteData(tableName, row, getTableInfo);
+      console.log("Deletion status: ", data);
+      return { msg: "Deleted a row" };
+    } catch (err) {
+      console.error(err);
+      throw new Error("Error deleting data");
+    }
+  } else if (operation === "update") {
+    try {
+      const data = await updateData(tableName, row, updatedData, getTableInfo);
+      console.log("Update status: ", data);
+      return { msg: "Updated a row" };
+    } catch (err) {
+      console.error(err);
+      throw new Error("Error updating data");
     }
   }
-  console.log(tableInfo);
-  return res.json(tableInfo);
-});
-
-
+}
 
 router.post("/processData", (req, res) => {
-  const {changes, getTableInfo} = req.body
-  const { tableName, row, operation } = changes;
-  console.log("table name: ", tableName)
-  console.log("Table info from session: ", getTableInfo)
-  // console.log("At processDATA", tableInfo[tableName]);
-  processDB(changes, getTableInfo, res)
-    .then((result) => {
-      console.log(result);
-    })
-    .catch((error) => {
-      console.log(error);
-    });
+  const { changes, getTableInfo } = req.body;
+  processData(changes, getTableInfo).then((data) => {
+    console.log(data);
+    res.json(data);
+    res.end();
+  });
 });
 
 router.post("/authenticatelogin", (req, res) => {
@@ -164,8 +247,6 @@ router.post("/authenticatelogin", (req, res) => {
           ) {
             res.status(200);
             return res.json({ msg: "Correct Password" });
-            // res.redirect('/dashboard');
-            console.log(data);
           } else if (data[count].password == password) {
             return res.json({ msg: "Incorrect Role" });
           } else {
