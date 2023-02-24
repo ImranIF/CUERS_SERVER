@@ -240,6 +240,7 @@ router.post("/authenticatelogin", (req, res) => {
     const query = `
         select * from Login_Info
         where evaluator_id = "${evaluator_id}"
+        and role = "${role}"
         `;
     conn.query(query, function (error, data) {
       if (data?.length > 0) {
