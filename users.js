@@ -83,7 +83,7 @@ async function loadData(tableName, res) {
       resolve(data);
     });
   });
-} 
+}
 
 async function deleteData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
@@ -97,9 +97,9 @@ async function deleteData(tableName, row, getTableInfo) {
 
     // dataTypes[row[primaryKeys[i]] === "int(11)"
     for (let i = 0; i < pkLen; i++) {
-      if(dataTypes[primaryKeys[i]].localeCompare("int(11)")==0 ){
+      if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0) {
         pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
-      }else{
+      } else {
         pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
       }
       if (pkLen - 1 != i) pkValueString += " and ";
@@ -125,10 +125,9 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
     console.log(row[primaryKeys[0]]);
     let pkValueString = "";
     for (let i = 0; i < pkLen; i++) {
-      if(dataTypes[primaryKeys[i]].localeCompare("int(11)")==0 )
+      if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0)
         pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
-      else
-        pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
+      else pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
       if (pkLen - 1 != i) pkValueString += " and ";
     }
     let val = "";
@@ -152,8 +151,8 @@ async function insertData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
     // create the query
     const { dataTypes } = getTableInfo[tableName];
-    console.log("Get Table INFO: ", getTableInfo[tableName])
-    console.log("ROWS: ", row)
+    console.log("Get Table INFO: ", getTableInfo[tableName]);
+    console.log("ROWS: ", row);
     let fields = "";
     let val = "";
     for (let key in row) {
@@ -239,14 +238,13 @@ router.post("/authenticatelogin", (req, res) => {
   if (evaluator_id && password) {
     const query = `
         select * from Login_Info
-        where evaluator_id = "${evaluator_id}"
-        and role = "${role}"
+        where evaluator_id = "${evaluator_id}" and role = "${role}"
         `;
     conn.query(query, function (error, data) {
       if (data?.length > 0) {
         for (var count = 0; count < data.length; count++) {
           if (
-            data[count].password == password &&
+            data[count].password === password &&
             data[count].role.localeCompare(role) == 0
           ) {
             res.status(200);
