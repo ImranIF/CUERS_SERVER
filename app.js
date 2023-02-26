@@ -28,8 +28,18 @@ app.use(express.urlencoded({ extended: false })); //referencing express module; 
 // })   //to register middleware function, use the use method, takes in a function
 
 //middleware function allows separating logic into multiple different functions, invoking each in sequential order. refer to /posts route of post method
+function errorHandler(err, req, res, next) {
+  if (err instanceof mysql.Error) {
+    console.error(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  } else {
+    next(err);
+  }
+  next();
+}
 
 app.use("/users", usersRoute);
+app.use(errorHandler);
 app.use("/posts", postsRoute);
 
 app.listen(3000, () => {

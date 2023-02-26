@@ -78,7 +78,7 @@ async function loadData(tableName, res) {
   return new Promise((resolve, reject) => {
     const query = `SELECT * FROM ${tableName}`;
     conn.query(query, function (err, result) {
-      if (err) return reject(err);
+      if (err) reject(err);
       const data = Object.values(JSON.parse(JSON.stringify(result)));
       resolve(data);
     });
@@ -108,9 +108,12 @@ async function deleteData(tableName, row, getTableInfo) {
     // running the query
     const query = `DELETE FROM ${tableName} WHERE ${pkValueString};`;
     conn.query(query, function (err, result) {
-      if (err) return reject(err);
-      const data = Object.values(JSON.parse(JSON.stringify(result)));
-      resolve(data);
+      if (err) reject(JSON.parse(JSON.stringify(err)));
+      else {
+        const data = Object(JSON.parse(JSON.stringify(result)));
+        console.log("Deleted data:", data);
+        resolve(data);
+      }
     });
   });
 }
@@ -140,9 +143,11 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
 
     // run the query
     conn.query(query, function (err, result) {
-      if (err) return reject(err);
-      const data = Object.values(JSON.parse(JSON.stringify(result)));
-      resolve(data);
+      if (err) reject(JSON.parse(JSON.stringify(err)));
+      else {
+        const data = Object(JSON.parse(JSON.stringify(result)));
+        resolve(data);
+      }
     });
   });
 }
@@ -151,8 +156,8 @@ async function insertData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
     // create the query
     const { dataTypes } = getTableInfo[tableName];
-    console.log("Get Table INFO: ", getTableInfo[tableName]);
-    console.log("ROWS: ", row);
+    // console.log("Get Table INFO: ", getTableInfo[tableName]);
+    // console.log("ROWS: ", row);
     let fields = "";
     let val = "";
     for (let key in row) {
@@ -169,17 +174,39 @@ async function insertData(tableName, row, getTableInfo) {
     val = val.slice(0, val.length - 2);
     const query = `INSERT INTO ${tableName} (${fields}) VALUES (${val});`;
 
-    console.log("Insertion", query);
+    // console.log("Insertion", query);
     // run the query
     conn.query(query, (err, result) => {
       if (err) {
-        reject(err);
+        reject(JSON.parse(JSON.stringify(err)));
       } else {
-        const data = Object.values(JSON.parse(JSON.stringify(result)));
+        const data = Object(JSON.parse(JSON.stringify(result)));
         resolve(data);
       }
     });
   });
+}
+
+async function statusGenerator(data, error) {
+  let message = "Error!";
+  if (data === undefined) {
+    if (error.code === "ER_DUP_ENTRY") {
+      message = "Row is already available!";
+    } else if (error.code === "ER_NO_REFERENCED_ROW") {
+      message = "No matching row in referenced table!";
+    } else if (error.code === "ER_PARSE_ERROR") {
+      message = "SQL syntax error!";
+    } else if (error.code === "ER_DATA_TOO_LONG") {
+      message = "Data value too long for column!";
+    } else if (error.code === "ER_INVALID_CHARACTER_STRING") {
+      message = "Invalid character string!";
+    } else if (error.code === "ER_ROW_IS_REFERENCED_2") {
+      message = "Cannot delete row due to foreign key references!";
+    }
+    return [0, message];
+  } else {
+    return [data.affectedRows, `${data.affectedRows} row affected`];
+  }
 }
 
 async function processData(changes, getTableInfo) {
@@ -190,46 +217,57 @@ async function processData(changes, getTableInfo) {
       const data = await loadData(tableName);
       return data;
     } catch (err) {
-      console.error(err);
-      throw new Error("Error loading data");
+      // If any error happended, generate two things,
+      // a boolean to say if the query succeeded and a message.
+      // throw a new error which will be handled in "/processData"
+      const status = await statusGenerator(undefined, err);
+      return status;
     }
   } else if (operation === "insert") {
     try {
       const data = await insertData(tableName, row, getTableInfo);
-      console.log("Insertion status: ", data);
-      return { msg: "Added a new row" };
+      const status = await statusGenerator(data, undefined);
+      return status;
     } catch (err) {
-      console.error(err);
-      throw new Error("Error inserting data");
+      // mostly duplicated row will create problem
+      const status = await statusGenerator(undefined, err);
+      return status;
     }
   } else if (operation === "delete") {
     try {
       const data = await deleteData(tableName, row, getTableInfo);
-      console.log("Deletion status: ", data);
-      return { msg: "Deleted a row" };
+      const status = await statusGenerator(data, undefined);
+      return status;
+      // console.log("Deletion status: ", data);
     } catch (err) {
-      console.error(err);
-      throw new Error("Error deleting data");
+      const status = await statusGenerator(undefined, err);
+      return status;
     }
   } else if (operation === "update") {
     try {
       const data = await updateData(tableName, row, updatedData, getTableInfo);
-      console.log("Update status: ", data);
-      return { msg: "Updated a row" };
+      // console.log("Update status: ", data);
+      const status = await statusGenerator(data, undefined);
+      return status;
     } catch (err) {
-      console.error(err);
-      throw new Error("Error updating data");
+      console.error("Here", err);
+      const status = await statusGenerator(undefined, err);
+      return status;
     }
   }
 }
 
 router.post("/processData", (req, res) => {
   const { changes, getTableInfo } = req.body;
-  processData(changes, getTableInfo).then((data) => {
-    console.log(data);
-    res.json(data);
-    res.end();
-  });
+  processData(changes, getTableInfo)
+    .then((data) => {
+      // console.log("Query status", data);
+      res.json(data);
+      res.end();
+    })
+    .catch((error) => {
+      res.status(400).send(error);
+    });
 });
 
 router.post("/authenticatelogin", (req, res) => {
