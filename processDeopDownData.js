@@ -74,21 +74,19 @@ router.post("/loadTableInfo", (req, res) => {
         });
 });
 
-async function loadData(tableName, conditionCheck) {
+async function loadData(tableName, colName, res) {
     return new Promise((resolve, reject) => {
         // const query = `SELECT * FROM ${tableName}`;
-        //console.log("colName is:", colName);
+        console.log("colName is:", colName);
         let query = "";
-        // console.log("conditionCheck is:", conditionCheck)
-        if (conditionCheck) {
-            // console.log("colName is:", conditionCheck)
-            query = `SELECT * FROM ${tableName} WHERE ${conditionCheck};`;
-            console.log("query is:", query)
+        if (colName) {
+            console.log("colName is:", colName)
+            query = `SELECT ${colName} FROM ${tableName}`;
         }
         else {
             query = `SELECT * FROM ${tableName}`;
         }
-       
+        console.log("query is:", query);
         conn.query(query, function (err, result) {
             if (err) return reject(err);
             const data = Object.values(JSON.parse(JSON.stringify(result)));
@@ -97,85 +95,8 @@ async function loadData(tableName, conditionCheck) {
     });
 }
 
-async function deleteData(tableName, row, getTableInfo) {
-    return new Promise((resolve, reject) => {
-        const { primaryKeys, dataTypes } = getTableInfo[tableName];
 
-        // creating the query
-        let pkLen = primaryKeys.length;
-        console.log("PK LEN IS:", pkLen);
-        console.log(row[primaryKeys[0]]);
-        let pkValueString = "";
 
-        // dataTypes[row[primaryKeys[i]] === "int(11)"
-        for (let i = 0; i < pkLen; i++) {
-            if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0) {
-                pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
-            } else {
-                pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
-            }
-            if (pkLen - 1 != i) pkValueString += " and ";
-        }
-
-        // running the query
-        const query = `DELETE FROM ${tableName} WHERE ${pkValueString};`;
-        conn.query(query, function (err, result) {
-            if (err) return reject(err);
-            const data = Object.values(JSON.parse(JSON.stringify(result)));
-            resolve(data);
-        });
-    });
-}
-async function updateData(tableName, row, updatedData, getTableInfo) {
-    return new Promise((resolve, reject) => {
-        const { primaryKeys, dataTypes } = getTableInfo[tableName];
-        const { colType, value } = updatedData;
-
-        // create the query
-        let pkLen = primaryKeys.length;
-        console.log("PK LEN IS:", pkLen);
-        console.log(row[primaryKeys[0]]);
-        let pkValueString = "";
-        for (let i = 0; i < pkLen; i++) {
-            if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0)
-                pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
-            else
-                pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
-            if (pkLen - 1 != i) pkValueString += " and ";
-        }
-        let val = "";
-        if (dataTypes[colType].localeCompare("int(11)") == 0) {
-            val += `${colType} = ${value}`;
-        } else {
-            val += `${colType} =  '${value}'`;
-        }
-        const query = `UPDATE ${tableName} SET ${val} WHERE ${pkValueString};`;
-
-        // run the query
-        conn.query(query, function (err, result) {
-            if (err) return reject(err);
-            const data = Object.values(JSON.parse(JSON.stringify(result)));
-            resolve(data);
-        });
-    });
-}
-// const { activity_type_id, sector_or_program, evaluator_id } = req.body;
-// async function factorsChecking() {
-//     const array0fFactors = ["hours", "No of Questions", "Half/full part", "No of students", "No of Khatas",];
-//     let query = "";
-
-//     for (let i = 0; i < array0fFactors.length; i++) {
-//         query = `SELECT DISTINCT course_id, eca.sector_or_program, eca.factor, eca.quantity, bill FROM Activity ac INNER JOIN Evaluates_Course_Activity eca
-// ON ac.activity_type_id = eca.activity_type_id = ${activity_type_id} AND eca.sector_or_program = '${sector_or_program}' and eca.factor = '${array0fFactors[i]}'  AND evaluator_id = '${evaluator_id}' AND ac.quantity_initial = (SELECT DISTINCT hours FROM Course c WHERE eca.course_id = c.id AND hours BETWEEN ac.quantity_initial AND ac.quantity_final); `
-
-//         conn.query(query, function (err, result) {
-//             if (err) return reject(err);
-//             const data = Object.values(JSON.parse(JSON.stringify(result)));
-//             resolve(data);
-//         }
-//     }
-
-// }
 async function insertData(tableName, row, getTableInfo) {
     return new Promise((resolve, reject) => {
         // create the query
@@ -212,7 +133,7 @@ async function insertData(tableName, row, getTableInfo) {
 }
 
 async function dropdownData(dropdownChanges) {
-    const { tableName, operation, colName } = dropdownChanges;
+    const { tableName, operation, colName , data} = dropdownChanges;
     if (operation === "load") {
         try {
             let data = [];
@@ -225,24 +146,27 @@ async function dropdownData(dropdownChanges) {
             throw new Error("Error loading data");
         }
     }
+    else if (operation === "insert") {
+        try {
+            const data = await insertData(tableName, );
+            console.log("Insertion status: ", data);
+            return { msg: "Added a new row" };
+        } catch (err) {
+            console.error(err);
+            throw new Error("Error inserting data");
+        }
+    }
 }
 
-async function processData(changes, getTableInfo) {
+async function processDropDownData(changes, getTableInfo) {
     console.log("passed tableInfo: ", getTableInfo);
-    const { tableName, row, operation, updatedData, conditionCheck } = changes;
+    const { tableName, row, operation, updatedData, colName } = changes;
     if (operation === "load") {
-        let data;
         try {
-            if(conditionCheck){
-                console.log("Condition Check: ", conditionCheck);
-                data = await loadData(tableName, conditionCheck);
-            }
-            else{
-                data = await loadData(tableName);
 
-            }
 
-            // console.log("Loaded data: ", data);
+            data = await loadData(tableName);
+            console.log("Loaded data: ", data);
             return data;
         } catch (err) {
             console.error(err);
@@ -279,55 +203,19 @@ async function processData(changes, getTableInfo) {
     }
 }
 
-// router.post("/dropdownData", (req, res) => {
-//     const { dropdownChanges } = req.body;
-//     dropdownChanges(dropdownChanges).then((data) => {
-//         console.log(data);
-//         res.json(data);
-//         res.end();
-//     });
-// });
-
-
-router.post("/processData", (req, res) => {
-    const { changes, getTableInfo } = req.body;
-    processData(changes, getTableInfo).then((data) => {
-    //    console.log(data);
+router.post("/dropdownData", (req, res) => {
+    const { dropdownChanges } = req.body;
+    dropdownChanges(dropdownChanges).then((data) => {
+        console.log(data);
         res.json(data);
         res.end();
     });
 });
 
-router.post("/authenticatelogin", (req, res) => {
-    const { evaluator_id, password, role } = req.body;
-    console.log(evaluator_id, password, role);
-    if (evaluator_id && password) {
-        const query = `
-        select * from Login_Info
-        where evaluator_id = "${evaluator_id}"
-        `;
-        conn.query(query, function (error, data) {
-            if (data?.length > 0) {
-                for (var count = 0; count < data.length; count++) {
-                    if (
-                        data[count].password == password &&
-                        data[count].role.localeCompare(role) == 0
-                    ) {
-                        res.status(200);
-                        return res.json({ msg: "Correct Password" });
-                    } else if (data[count].password == password) {
-                        return res.json({ msg: "Incorrect Role" });
-                    } else {
-                        return res.json({ msg: "Incorrect Password" });
-                    }
-                }
-            } else {
-                return res.json({ msg: "Incorrect Evaluator Id" });
-            }
-            res.end();
-        });
-    }
-});
+
+
+
+
 
 router.get("/", (req, res) => {
     conn.query("SELECT * from Login_Info", function (err, rows, fields) {
