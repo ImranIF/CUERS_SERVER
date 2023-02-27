@@ -74,22 +74,26 @@ router.post("/loadTableInfo", (req, res) => {
     });
 });
 
-async function loadData(tableName, conditionCheck) {
+async function loadData(tableName, conditionCheck, query) {
   return new Promise((resolve, reject) => {
     // const query = `SELECT * FROM ${tableName}`;
     //console.log("colName is:", colName);
-    let query = "";
+    // console.log("At boss, Query: ", query);
+    let query1;
     // console.log("conditionCheck is:", conditionCheck)
-    if (conditionCheck) {
+    if(query){
+        query1 = query;
+    }
+    else if(conditionCheck != "") {
       // console.log("colName is:", conditionCheck)
-      query = `SELECT * FROM ${tableName} WHERE ${conditionCheck};`;
-      console.log("query is:", query);
+      query1 = `SELECT * FROM ${tableName} WHERE ${conditionCheck};`;
+      console.log("query is:", query1);
     } else {
-      query = `SELECT * FROM ${tableName}`;
-      console.log("query is:", query);
+      query1 = `SELECT * FROM ${tableName}`;
+      console.log("query is:", query1);
     }
 
-    conn.query(query, function (err, result) {
+    conn.query(query1, function (err, result) {
       if (err) reject(err);
       const data = Object.values(JSON.parse(JSON.stringify(result)));
       resolve(data);
@@ -256,19 +260,14 @@ async function statusGenerator(data, error) {
   }
 }
 
-async function processData(changes, getTableInfo) {
-  console.log("passed tableInfo: ", getTableInfo);
+async function processData(changes, getTableInfo, query) {
+  // console.log("passed tableInfo: ", getTableInfo);
+  // console.log("Query at func", query);
   const { tableName, row, operation, updatedData, conditionCheck } = changes;
   if (operation === "load") {
     let data;
     try {
-      if (conditionCheck) {
-        console.log("Condition Check: ", conditionCheck);
-        data = await loadData(tableName, conditionCheck);
-      } else {
-        data = await loadData(tableName);
-      }
-
+        data = await loadData(tableName, conditionCheck, query);
       // console.log("Loaded data: ", data);
       return data;
     } catch (err) {
@@ -319,8 +318,8 @@ async function processData(changes, getTableInfo) {
 // });
 
 router.post("/processData", (req, res) => {
-  const { changes, getTableInfo } = req.body;
-  processData(changes, getTableInfo)
+  const { changes, getTableInfo, query } = req.body;
+  processData(changes, getTableInfo, query)
     .then((data) => {
       // console.log("Query status", data);
       res.json(data);
