@@ -1,4 +1,4 @@
-const { Router, query } = require("express"); //import Router class
+const { Router } = require("express"); //import Router class
 // const db = require('../database')
 const router = Router();
 const express = require("express");
@@ -83,12 +83,13 @@ async function loadData(tableName, conditionCheck) {
         if (conditionCheck) {
             // console.log("colName is:", conditionCheck)
             query = `SELECT * FROM ${tableName} WHERE ${conditionCheck};`;
-            console.log("query is:", query)
+            console.log("query is:", query);
         }
         else {
             query = `SELECT * FROM ${tableName}`;
+            console.log("query is:", query);
         }
-       
+
         conn.query(query, function (err, result) {
             if (err) return reject(err);
             const data = Object.values(JSON.parse(JSON.stringify(result)));
@@ -159,23 +160,7 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
         });
     });
 }
-// const { activity_type_id, sector_or_program, evaluator_id } = req.body;
-// async function factorsChecking() {
-//     const array0fFactors = ["hours", "No of Questions", "Half/full part", "No of students", "No of Khatas",];
-//     let query = "";
 
-//     for (let i = 0; i < array0fFactors.length; i++) {
-//         query = `SELECT DISTINCT course_id, eca.sector_or_program, eca.factor, eca.quantity, bill FROM Activity ac INNER JOIN Evaluates_Course_Activity eca
-// ON ac.activity_type_id = eca.activity_type_id = ${activity_type_id} AND eca.sector_or_program = '${sector_or_program}' and eca.factor = '${array0fFactors[i]}'  AND evaluator_id = '${evaluator_id}' AND ac.quantity_initial = (SELECT DISTINCT hours FROM Course c WHERE eca.course_id = c.id AND hours BETWEEN ac.quantity_initial AND ac.quantity_final); `
-
-//         conn.query(query, function (err, result) {
-//             if (err) return reject(err);
-//             const data = Object.values(JSON.parse(JSON.stringify(result)));
-//             resolve(data);
-//         }
-//     }
-
-// }
 async function insertData(tableName, row, getTableInfo) {
     return new Promise((resolve, reject) => {
         // create the query
@@ -233,11 +218,11 @@ async function processData(changes, getTableInfo) {
     if (operation === "load") {
         let data;
         try {
-            if(conditionCheck){
+            if (conditionCheck) {
                 console.log("Condition Check: ", conditionCheck);
                 data = await loadData(tableName, conditionCheck);
             }
-            else{
+            else {
                 data = await loadData(tableName);
 
             }
@@ -292,7 +277,7 @@ async function processData(changes, getTableInfo) {
 router.post("/processData", (req, res) => {
     const { changes, getTableInfo } = req.body;
     processData(changes, getTableInfo).then((data) => {
-    //    console.log(data);
+        //    console.log(data);
         res.json(data);
         res.end();
     });
@@ -328,6 +313,81 @@ router.post("/authenticatelogin", (req, res) => {
         });
     }
 });
+
+
+router.post("/activityBillData", (req, res) => {
+    const { Bill } = req.body;
+    console.log("Bill: ", Bill);
+    const tableInfo = {};
+    const tableDesc = {};
+
+
+    const promises = Bill.map(({ evaluator_id, semester_no, front, factor, sector_or_program, activity_type_id }) => {
+        // console.log("evaluator_id", evaluator_id);
+        // console.log("semester_no", semester_no);
+        // console.log("front", front);
+        // console.log("factor", factor);
+        // console.log("sector_or_program", sector_or_program);
+        // console.log("activity_type_id", activity_type_id);
+
+        return new Promise((resolve, reject) => {
+            // let query = "select * from Activity where activity_type_id = 10 and sector_or_program like 'CSE%'";
+            console.log(activity_type_id);
+            let tableName = "Evaluates_Course_Activity";
+            if (activity_type_id === 3 || activity_type_id === 6 || (activity_type_id >= 8 && activity_type_id <= 15)) {
+                tableName = "Processes_Semester_Activity";
+            }
+
+            let query = `WITH acFactor AS (SELECT DISTINCT factor FROM Activity ac WHERE ac.activity_type_id = ${activity_type_id} AND ac.sector_or_program LIKE '${sector_or_program}%' ), ecaQuantity AS ( SELECT DISTINCT quantity FROM ${tableName} eca WHERE eca.activity_type_id = ${activity_type_id} AND eca.semester_no = ${semester_no} AND eca.evaluator_id = ${evaluator_id} AND eca.sector_or_program = '${sector_or_program}' AND eca.factor = (SELECT factor from acFactor) ) Select DISTINCT * , CASE WHEN (ac.quantity_final - ac.quantity_initial >= 10000 || ac.factor = '${factor}') THEN bill * quantity ELSE bill END AS real_bill FROM Activity ac INNER JOIN ${tableName} eca on eca.evaluator_id = ${evaluator_id} AND eca.semester_no =  ${semester_no} AND eca.activity_type_id = ${activity_type_id} AND eca.activity_type_id = ac.activity_type_id AND eca.sector_or_program = '${sector_or_program}' AND ac.sector_or_program LIKE '${sector_or_program}%' AND eca.factor = '${factor}' AND ac.factor = (SELECT factor from acFactor) AND (SELECT quantity from ecaQuantity) BETWEEN ac.quantity_initial AND ac.quantity_final;`
+            if(activity_type_id ===3 ){
+                query = `WITH cntMembers AS ( SELECT COUNT(*) AS count FROM Exam_Committee ec WHERE ec.semester_no = ${semester_no} AND ec.program = 'Honours' ) SELECT SUM(bill) / (SELECT count from cntMembers) FROM Activity ac INNER JOIN Course_in_Semester_Exam cise ON cise.semester_no = ${semester_no} AND cise.program = '${sector_or_program}' AND ac.factor = '${factor}' AND ac.activity_type_id = 3 AND cise.hours = (ac.quantity_initial + ac.quantity_final) / 2;`
+            }
+            if(activity_type_id===2){
+                query = `WITH acFactor AS (SELECT DISTINCT factor FROM Activity ac WHERE ac.activity_type_id = 1 AND ac.sector_or_program LIKE '${sector_or_program}%' ), ecaQuantity AS ( SELECT DISTINCT quantity FROM ${tableName} eca WHERE eca.activity_type_id = 1 AND eca.semester_no = ${semester_no} AND eca.evaluator_id = ${evaluator_id} AND eca.sector_or_program = '${sector_or_program}' AND eca.factor = (SELECT factor from acFactor) ) SELECT DISTINCT *, CASE WHEN ac.quantity_final - ac.quantity_initial >= 1000000 THEN GREATEST(min_bill * 0.4, bill * quantity * 0.4) ELSE GREATEST(min_bill * 0.4, bill * 0.4) END AS real_bill FROM Activity ac INNER JOIN ${tableName} eca on eca.evaluator_id = ${evaluator_id} AND eca.semester_no =  ${semester_no} AND eca.activity_type_id = 1 AND eca.activity_type_id = ac.activity_type_id AND eca.sector_or_program = '${sector_or_program}' AND ac.sector_or_program LIKE '${sector_or_program}%' AND eca.factor = '${factor}' AND ac.factor = (SELECT factor from acFactor) AND (SELECT quantity from ecaQuantity) BETWEEN ac.quantity_initial AND ac.quantity_final;`;
+            }
+            if(activity_type_id===5){
+                query =`WITH acFactor AS ( SELECT DISTINCT factor FROM Activity ac WHERE ac.activity_type_id = 5 AND ac.sector_or_program LIKE 'Lab%' ), ecaQuantity AS ( SELECT DISTINCT quantity FROM Evaluates_Course_Activity eca WHERE eca.activity_type_id = 5 AND eca.semester_no = 8 AND eca.evaluator_id = 1003 AND eca.factor = (SELECT factor from acFactor) ) Select DISTINCT * FROM Activity ac INNER JOIN Evaluates_Course_Activity eca on eca.evaluator_id = 1003 AND eca.semester_no = 8 AND eca.activity_type_id = 5 AND eca.activity_type_id = ac.activity_type_id AND eca.sector_or_program = 'Lab' AND ac.sector_or_program LIKE 'Lab%' AND eca.factor = 'Days' AND ac.factor = (SELECT factor from acFactor) AND (SELECT quantity from ecaQuantity) BETWEEN ac.quantity_initial AND ac.quantity_final;`
+
+            }
+            console.log("query:", query);
+
+
+            conn.query(query, (err, results) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    //tableDesc[tableName] = results;
+                    console.log("results: ", results);
+                    if (results == []) {
+                        console.log(activity_type_id, sector_or_program, factor);
+                    }
+                    resolve();
+                }
+            });
+        });
+    });
+
+
+
+
+
+
+    //     conn.query(query, function (err, result) {
+    //         if (err) return reject(err);
+    //         const data = Object.values(JSON.parse(JSON.stringify(result)));
+    //         resolve(data);
+    //     }
+
+    //     // if (data != null) {
+    //     //     answer.push(data);
+
+    //     // }
+
+    // }
+});
+
+
+
 
 router.get("/", (req, res) => {
     conn.query("SELECT * from Login_Info", function (err, rows, fields) {

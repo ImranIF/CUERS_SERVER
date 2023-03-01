@@ -4,6 +4,7 @@ const app = express(); //create express application for us
 // const cookieParser = require('cookie-parser')   // by default, express will not parse cookie, we need to use it in order for cookie middleware function to be registered to our app
 // const session = require('express-session')  //imported Express session, will take care of parsing cookies for us, so cookie-parser will not be needed
 const postsRoute = require('./posts')
+const activityBillRoute = require("./activityBill")
 const usersRoute = require('./users')
 const cors = require('cors');
 app.use(cors());
