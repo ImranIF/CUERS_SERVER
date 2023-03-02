@@ -5,6 +5,7 @@ const app = express(); //create express application for us
 // const session = require('express-session')  //imported Express session, will take care of parsing cookies for us, so cookie-parser will not be needed
 const postsRoute = require("./posts");
 const usersRoute = require("./users");
+// const pdfGenerationRoute = require("./pdfGeneration");
 const cors = require("cors");
 app.use(cors());
 // const store = new session.MemoryStore() //MemoryStore class existing in module and we're creating an instance of it
@@ -22,25 +23,15 @@ app.use(express.json()); //register json
 app.use(express.urlencoded({ extended: false })); //referencing express module; middleware enabled
 
 // app.use((req, res, next) =>{    //must invoke the next function
-//    // console.log(store)
+//    // console.log(
 //     console.log(`${req.method} - ${req.url}`)
 //     next();     //invoke the next middleware function
 // })   //to register middleware function, use the use method, takes in a function
 
 //middleware function allows separating logic into multiple different functions, invoking each in sequential order. refer to /posts route of post method
-function errorHandler(err, req, res, next) {
-  if (err instanceof mysql.Error) {
-    console.error(err);
-    res.status(500).json({ error: "Internal Server Error" });
-  } else {
-    next(err);
-  }
-  next();
-}
-
 app.use("/users", usersRoute);
-app.use(errorHandler);
 app.use("/posts", postsRoute);
+// app.use("/pdfGeneration", pdfGenerationRoute);
 
 app.listen(3000, () => {
   console.log("Server is running on Port 3000");

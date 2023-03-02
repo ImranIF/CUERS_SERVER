@@ -6,6 +6,10 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 router.use(cors());
 // const app = express();
+// const {getActivityList} = require('./pdfGeneration.js');
+//
+const {getActivityList, getCourseActivityTable, getSemesterActivityTable} = require("./pdfGeneration.js");
+const loadData = require("./loadData.js");
 
 const mariadb = require("mysql"); //import mariadb
 router.use(bodyParser.json());
@@ -45,6 +49,7 @@ router.post("/loadTableInfo", (req, res) => {
       });
     });
   });
+
   Promise.all(promises)
     .then(() => {
       // getting the primary keys of each
@@ -74,32 +79,6 @@ router.post("/loadTableInfo", (req, res) => {
     });
 });
 
-async function loadData(tableName, conditionCheck, query) {
-  return new Promise((resolve, reject) => {
-    // const query = `SELECT * FROM ${tableName}`;
-    //console.log("colName is:", colName);
-    // console.log("At boss, Query: ", query);
-    let query1;
-    // console.log("conditionCheck is:", conditionCheck)
-    if(query){
-        query1 = query;
-    }
-    else if(conditionCheck != "") {
-      // console.log("colName is:", conditionCheck)
-      query1 = `SELECT * FROM ${tableName} WHERE ${conditionCheck};`;
-      console.log("query is:", query1);
-    } else {
-      query1 = `SELECT * FROM ${tableName}`;
-      console.log("query is:", query1);
-    }
-
-    conn.query(query1, function (err, result) {
-      if (err) reject(err);
-      const data = Object.values(JSON.parse(JSON.stringify(result)));
-      resolve(data);
-    });
-  });
-}
 
 async function deleteData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
@@ -267,7 +246,7 @@ async function processData(changes, getTableInfo, query) {
   if (operation === "load") {
     let data;
     try {
-        data = await loadData(tableName, conditionCheck, query);
+        data = await loadData(conn, tableName, conditionCheck, query);
       // console.log("Loaded data: ", data);
       return data;
     } catch (err) {
@@ -360,6 +339,31 @@ router.post("/authenticatelogin", (req, res) => {
     });
   }
 });
+router.post("/pdfGeneration", (req, res) => {
+    console.log("bfgfg");
+    const {semester_no, evaluator_id, to_get, activity_type_id, sector_or_program} = req.body;
+    console.log(req.body);
+    if(to_get === "activity_list"){
+        getActivityList(conn, semester_no).then((data) => {
+            res.json(data);
+            res.end();
+        });
+    }
+    else if(to_get === "courseActivities"){
+        getCourseActivityTable(conn, activity_type_id, sector_or_program, semester_no).then((data) => {
+            console.log("At getcourseActiivty: ", data);
+            res.json(data);
+            res.end();
+        });
+    }
+    else{
+        getSemesterActivityTable(conn, activity_type_id, sector_or_program, semester_no).then((data) => {
+            res.json(data);
+            res.end();
+        });
+    }
+});
+
 
 router.get("/", (req, res) => {
   conn.query("SELECT * from Login_Info", function (err, rows, fields) {
@@ -369,5 +373,8 @@ router.get("/", (req, res) => {
     //   res.send(`Result: ${rows[0][]}`);
   });
 });
+
+
+
 
 module.exports = router;
