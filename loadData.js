@@ -23,7 +23,7 @@ async function loadData(conn, tableName, conditionCheck, query) {
         const data = Object.values(JSON.parse(JSON.stringify(result)));
         resolve(data);
         }
-          });
+      });
   });
 }
 

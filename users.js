@@ -8,7 +8,12 @@ router.use(cors());
 // const app = express();
 // const {getActivityList} = require('./pdfGeneration.js');
 //
-const {getActivityList, getCourseActivityTable, getSemesterActivityTable} = require("./pdfGeneration.js");
+const {
+  getActivityList,
+  getCourseActivityTable,
+  getSemesterActivityTable,
+} = require("./pdfGeneration.js");
+const { getBill } = require("./billGeneration.js");
 const loadData = require("./loadData.js");
 
 const mariadb = require("mysql"); //import mariadb
@@ -78,7 +83,6 @@ router.post("/loadTableInfo", (req, res) => {
       res.status(500).send("Internal server Error");
     });
 });
-
 
 async function deleteData(tableName, row, getTableInfo) {
   return new Promise((resolve, reject) => {
@@ -246,7 +250,7 @@ async function processData(changes, getTableInfo, query) {
   if (operation === "load") {
     let data;
     try {
-        data = await loadData(conn, tableName, conditionCheck, query);
+      data = await loadData(conn, tableName, conditionCheck, query);
       // console.log("Loaded data: ", data);
       return data;
     } catch (err) {
@@ -286,15 +290,6 @@ async function processData(changes, getTableInfo, query) {
     }
   }
 }
-
-// router.post("/dropdownData", (req, res) => {
-//     const { dropdownChanges } = req.body;
-//     dropdownChanges(dropdownChanges).then((data) => {
-//         console.log(data);
-//         res.json(data);
-//         res.end();
-//     });
-// });
 
 router.post("/processData", (req, res) => {
   const { changes, getTableInfo, query } = req.body;
@@ -340,30 +335,50 @@ router.post("/authenticatelogin", (req, res) => {
   }
 });
 router.post("/pdfGeneration", (req, res) => {
-    console.log("bfgfg");
-    const {semester_no, evaluator_id, to_get, activity_type_id, sector_or_program} = req.body;
-    console.log(req.body);
-    if(to_get === "activity_list"){
-        getActivityList(conn, semester_no).then((data) => {
-            res.json(data);
-            res.end();
-        });
-    }
-    else if(to_get === "courseActivities"){
-        getCourseActivityTable(conn, activity_type_id, sector_or_program, semester_no).then((data) => {
-            console.log("At getcourseActiivty: ", data);
-            res.json(data);
-            res.end();
-        });
-    }
-    else{
-        getSemesterActivityTable(conn, activity_type_id, sector_or_program, semester_no).then((data) => {
-            res.json(data);
-            res.end();
-        });
-    }
+  const {
+    semester_no,
+    evaluator_id,
+    to_get,
+    activity_type_id,
+    sector_or_program,
+  } = req.body;
+  console.log(req.body);
+  if (to_get === "activity_list") {
+    getActivityList(conn, semester_no).then((data) => {
+      res.json(data);
+      res.end();
+    });
+  } else if (to_get === "courseActivities") {
+    getCourseActivityTable(
+      conn,
+      activity_type_id,
+      sector_or_program,
+      semester_no
+    ).then((data) => {
+      console.log("At getcourseActiivty: ", data);
+      res.json(data);
+      res.end();
+    });
+  } else {
+    getSemesterActivityTable(
+      conn,
+      activity_type_id,
+      sector_or_program,
+      semester_no
+    ).then((data) => {
+      res.json(data);
+      res.end();
+    });
+  }
 });
 
+router.post("/activityBillData", (req, res) => {
+  getBill(conn, req.body).then((data) => {
+    console.log("Data inside router", data);
+    res.json(data);
+    res.end();
+  });
+});
 
 router.get("/", (req, res) => {
   conn.query("SELECT * from Login_Info", function (err, rows, fields) {
@@ -373,8 +388,5 @@ router.get("/", (req, res) => {
     //   res.send(`Result: ${rows[0][]}`);
   });
 });
-
-
-
 
 module.exports = router;
