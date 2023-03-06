@@ -180,6 +180,9 @@ group by eca.course_id, eca.sector_or_program, eca.evaluator_id, eca.semester_no
               obj["activity_type_id"] = activity_type_id;
               obj["sector_or_program"] = sector_or_program;
                 obj["front"] = front;
+                if(obj["Course no"] === undefined){
+                    obj["Course no"] = "";
+                }
               activityThings.push(obj);
             }
             resolve();
