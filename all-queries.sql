@@ -115,8 +115,6 @@ group by eca.sector_or_program, eca.evaluator_id, eca.semester_no;
 
 
 
-#if(activity_type_id == 2)
-# query =
 WITH acFactor AS
     (SELECT DISTINCT factor
      FROM Activity ac

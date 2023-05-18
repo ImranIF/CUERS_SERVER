@@ -201,22 +201,41 @@ async function insertData(tableName, row, getTableInfo) {
     });
   });
 }
+router.post("/processDropDownData", async (req, res) => {
+  try {
+    const { tableName, operation, colName } = req.body.data.params;
+    console.log(req.body);
 
-async function dropdownData(dropdownChanges) {
-  const { tableName, operation, colName } = dropdownChanges;
-  if (operation === "load") {
-    try {
-      let data = [];
-      if (colName) {
-        data = await loadData(tableName, colName);
-        console.log("Loaded data: ", data);
-      }
-    } catch (err) {
-      console.error(err);
-      throw new Error("Error loading data");
-    }
+    const { dropDownCol } = colName;
+    console.log(tableName, operation, dropDownCol);
+
+    const dataX = await processDropDownData(tableName, dropDownCol);
+    //console.log(dataX);
+    let data= dataX.map((item) => item[dropDownCol]);
+    console.log(data);
+    res.json(JSON.stringify(data));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error loading data" });
+  }
+});
+
+async function processDropDownData(tableName, dropDownCol) {
+  try {
+    let data = [];
+    let query = `SELECT DISTINCT ${dropDownCol} FROM ${tableName}`;
+    console.log(query);
+    data = await loadData(conn, null, null, query, null);
+    //console.log("Loaded data: ", data);
+    return data;
+  } catch (err) {
+    console.error(err);
+    throw new Error("Error loading data");
   }
 }
+
+
+
 async function statusGenerator(data, error) {
   let message = "Error!";
   if (data === undefined) {
