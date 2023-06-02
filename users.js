@@ -1,9 +1,10 @@
-const { Router, query } = require("express"); //import Router class
+const { Router, query } = require('express'); //import Router class
 // const db = require('../database')
 const router = Router();
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const toEnglishNumber = require('./toEnglishNumber.js');
 router.use(cors());
 // const app = express();
 // const {getActivityList} = require('./pdfGeneration.js');
@@ -12,32 +13,32 @@ const {
   getActivityList,
   getCourseActivityTable,
   getSemesterActivityTable,
-} = require("./pdfGeneration.js");
-const { getBill } = require("./billGeneration.js");
-const loadData = require("./loadData.js");
+} = require('./pdfGeneration.js');
+const { getBill } = require('./billGeneration.js');
+const loadData = require('./loadData.js');
 
-const mariadb = require("mysql"); //import mariadb
+const mariadb = require('mysql'); //import mariadb
 router.use(bodyParser.json());
 const conn = mariadb.createConnection({
   //allow us to import this file with database connection
-  host: "h1p.h.filess.io",
-  port: "3305",
-  user: "CUERS_realenter",
-  password: "f031ad57d5d061a2c1003b21f5d9af7771fbfcce",
-  database: "CUERS_realenter",
+  host: 'h1p.h.filess.io',
+  port: '3305',
+  user: 'CUERS_realenter',
+  password: 'f031ad57d5d061a2c1003b21f5d9af7771fbfcce',
+  database: 'CUERS_realenter',
 });
 
 router.use((req, res, next) => {
-  console.log("Request made to /USERS Route");
+  console.log('Request made to /USERS Route');
   next(); //needs to go to the middleware
 });
 
-router.get("/posts", (req, res) => {
-  res.json({ route: "Posts" });
+router.get('/posts', (req, res) => {
+  res.json({ route: 'Posts' });
 });
 
 // Loading for the first time is not working {}
-router.post("/loadTableInfo", (req, res) => {
+router.post('/loadTableInfo', (req, res) => {
   const { tableNames } = req.body;
   let tableInfo = {};
   let tableDesc = {};
@@ -64,23 +65,23 @@ router.post("/loadTableInfo", (req, res) => {
         let primaryKeys = [];
         let dataTypes = {};
         primaryKeys = tableDesc[table]
-          .filter((item) => item.Key === "PRI")
+          .filter((item) => item.Key === 'PRI')
           .map((item) => item.Field);
-        tempInfo["primaryKeys"] = primaryKeys;
+        tempInfo['primaryKeys'] = primaryKeys;
         // getting the types;
         dataTypes = tableDesc[table].reduce((result, { Field, Type }) => {
           result[Field] = Type;
           // console.log("The result is:", result);
           return result;
         }, {});
-        tempInfo["dataTypes"] = dataTypes;
+        tempInfo['dataTypes'] = dataTypes;
         tableInfo[table] = tempInfo;
       }
       res.json(tableInfo);
     })
     .catch((err) => {
-      console.error("Error getting table desc: ", err);
-      res.status(500).send("Internal server Error");
+      console.error('Error getting table desc: ', err);
+      res.status(500).send('Internal server Error');
     });
 });
 
@@ -90,18 +91,20 @@ async function deleteData(tableName, row, getTableInfo) {
 
     // creating the query
     let pkLen = primaryKeys.length;
-    console.log("PK LEN IS:", pkLen);
+    console.log('PK LEN IS:', pkLen);
     console.log(row[primaryKeys[0]]);
-    let pkValueString = "";
+    let pkValueString = '';
 
     // dataTypes[row[primaryKeys[i]] === "int(11)"
     for (let i = 0; i < pkLen; i++) {
-      if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0) {
-        pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      if (dataTypes[primaryKeys[i]].localeCompare('int(11)') == 0) {
+        pkValueString += `${primaryKeys[i]} = ${toEnglishNumber(
+          row[primaryKeys[i]]
+        )}`;
       } else {
         pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
       }
-      if (pkLen - 1 != i) pkValueString += " and ";
+      if (pkLen - 1 != i) pkValueString += ' and ';
     }
 
     // running the query
@@ -110,7 +113,7 @@ async function deleteData(tableName, row, getTableInfo) {
       if (err) reject(JSON.parse(JSON.stringify(err)));
       else {
         const data = Object(JSON.parse(JSON.stringify(result)));
-        console.log("Deleted data:", data);
+        console.log('Deleted data:', data);
         resolve(data);
       }
     });
@@ -120,25 +123,30 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
   return new Promise((resolve, reject) => {
     const { primaryKeys, dataTypes } = getTableInfo[tableName];
     const { colType, value } = updatedData;
+    console.log('Row', row);
 
     // create the query
     let pkLen = primaryKeys.length;
-    console.log("PK LEN IS:", pkLen);
+    console.log('PK LEN IS:', pkLen);
     console.log(row[primaryKeys[0]]);
-    let pkValueString = "";
+    let pkValueString = '';
     for (let i = 0; i < pkLen; i++) {
-      if (dataTypes[primaryKeys[i]].localeCompare("int(11)") == 0)
-        pkValueString += `${primaryKeys[i]} = ${row[primaryKeys[i]]}`;
+      if (dataTypes[primaryKeys[i]].localeCompare('int(11)') == 0)
+        pkValueString += `${primaryKeys[i]} = ${toEnglishNumber(
+          row[primaryKeys[i]]
+        )}`;
       else pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
-      if (pkLen - 1 != i) pkValueString += " and ";
+      if (pkLen - 1 != i) pkValueString += ' and ';
     }
-    let val = "";
-    if (dataTypes[colType].localeCompare("int(11)") == 0) {
+    console.log('PkvalueString: ', pkValueString);
+    let val = '';
+    if (dataTypes[colType].localeCompare('int(11)') == 0) {
       val += `${colType} = ${value}`;
     } else {
       val += `${colType} =  '${value}'`;
     }
     const query = `UPDATE ${tableName} SET ${val} WHERE ${pkValueString};`;
+    console.log('Query is', query);
 
     // run the query
     conn.query(query, function (err, result) {
@@ -173,12 +181,12 @@ async function insertData(tableName, row, getTableInfo) {
     const { dataTypes } = getTableInfo[tableName];
     // console.log("Get Table INFO: ", getTableInfo[tableName]);
     // console.log("ROWS: ", row);
-    let fields = "";
-    let val = "";
+    let fields = '';
+    let val = '';
     for (let key in row) {
       if (row.hasOwnProperty(key)) {
         fields += `\`${key}\`, `;
-        if (dataTypes[key].localeCompare("int(11)") == 0) {
+        if (dataTypes[key].localeCompare('int(11)') == 0) {
           val += `${row[key]}, `;
         } else {
           val += `"${row[key]}", `;
@@ -204,41 +212,41 @@ async function insertData(tableName, row, getTableInfo) {
 
 async function dropdownData(dropdownChanges) {
   const { tableName, operation, colName } = dropdownChanges;
-  if (operation === "load") {
+  if (operation === 'load') {
     try {
       let data = [];
       if (colName) {
         data = await loadData(tableName, colName);
-        console.log("Loaded data: ", data);
+        console.log('Loaded data: ', data);
       }
     } catch (err) {
       console.error(err);
-      throw new Error("Error loading data");
+      throw new Error('Error loading data');
     }
   }
 }
 async function statusGenerator(data, error) {
-  let message = "Error!";
+  let message = 'Error!';
   if (data === undefined) {
-    console.log("Error happened", error);
-    if (error.code === "ER_DUP_ENTRY") {
-      message = "Row is already available!";
-    } else if (error.code === "ER_NO_REFERENCED_ROW") {
-      message = "No matching row in referenced table!";
-    } else if (error.code === "ER_PARSE_ERROR") {
-      message = "SQL syntax error!";
-    } else if (error.code === "ER_DATA_TOO_LONG") {
-      message = "Data value too long for column!";
-    } else if (error.code === "ER_INVALID_CHARACTER_STRING") {
-      message = "Invalid character string!";
-    } else if (error.code === "ER_ROW_IS_REFERENCED_2") {
-      message = "Cannot delete row due to foreign key references!";
-    } else if (error.code === "ER_NO_REFERENCED_ROW_2") {
-      message = "Foreign key constraint failure. Check parent record!";
+    console.log('Error happened', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      message = 'Row is already available!';
+    } else if (error.code === 'ER_NO_REFERENCED_ROW') {
+      message = 'No matching row in referenced table!';
+    } else if (error.code === 'ER_PARSE_ERROR') {
+      message = 'SQL syntax error!';
+    } else if (error.code === 'ER_DATA_TOO_LONG') {
+      message = 'Data value too long for column!';
+    } else if (error.code === 'ER_INVALID_CHARACTER_STRING') {
+      message = 'Invalid character string!';
+    } else if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      message = 'Cannot delete row due to foreign key references!';
+    } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      message = 'Foreign key constraint failure. Check parent record!';
     }
     return [0, message];
   } else {
-    console.log("No error!", data);
+    console.log('No error!', data);
     return [data.affectedRows, `${data.affectedRows} row affected`];
   }
 }
@@ -247,7 +255,7 @@ async function processData(changes, getTableInfo, query) {
   // console.log("passed tableInfo: ", getTableInfo);
   // console.log("Query at func", query);
   const { tableName, row, operation, updatedData, conditionCheck } = changes;
-  if (operation === "load") {
+  if (operation === 'load') {
     let data;
     try {
       data = await loadData(conn, tableName, conditionCheck, query);
@@ -257,7 +265,7 @@ async function processData(changes, getTableInfo, query) {
       const status = await statusGenerator(undefined, err);
       return status;
     }
-  } else if (operation === "insert") {
+  } else if (operation === 'insert') {
     try {
       const data = await insertData(tableName, row, getTableInfo);
       const status = await statusGenerator(data, undefined);
@@ -267,7 +275,7 @@ async function processData(changes, getTableInfo, query) {
       const status = await statusGenerator(undefined, err);
       return status;
     }
-  } else if (operation === "delete") {
+  } else if (operation === 'delete') {
     try {
       const data = await deleteData(tableName, row, getTableInfo);
       const status = await statusGenerator(data, undefined);
@@ -277,21 +285,21 @@ async function processData(changes, getTableInfo, query) {
       const status = await statusGenerator(undefined, err);
       return status;
     }
-  } else if (operation === "update") {
+  } else if (operation === 'update') {
     try {
       const data = await updateData(tableName, row, updatedData, getTableInfo);
       // console.log("Update status: ", data);
       const status = await statusGenerator(data, undefined);
       return status;
     } catch (err) {
-      console.error("Here", err);
+      console.error('Here', err);
       const status = await statusGenerator(undefined, err);
       return status;
     }
   }
 }
 
-router.post("/processData", (req, res) => {
+router.post('/processData', (req, res) => {
   const { changes, getTableInfo, query } = req.body;
   processData(changes, getTableInfo, query)
     .then((data) => {
@@ -304,7 +312,7 @@ router.post("/processData", (req, res) => {
     });
 });
 
-router.post("/authenticatelogin", (req, res) => {
+router.post('/authenticatelogin', (req, res) => {
   const { evaluator_id, password, role } = req.body;
   console.log(evaluator_id, password, role);
   if (evaluator_id && password) {
@@ -320,21 +328,21 @@ router.post("/authenticatelogin", (req, res) => {
             data[count].role.localeCompare(role) == 0
           ) {
             res.status(200);
-            return res.json({ msg: "Correct Password" });
+            return res.json({ msg: 'Correct Password' });
           } else if (data[count].password == password) {
-            return res.json({ msg: "Incorrect Role" });
+            return res.json({ msg: 'Incorrect Role' });
           } else {
-            return res.json({ msg: "Incorrect Password" });
+            return res.json({ msg: 'Incorrect Password' });
           }
         }
       } else {
-        return res.json({ msg: "Incorrect Evaluator Id" });
+        return res.json({ msg: 'Incorrect Evaluator Id' });
       }
       res.end();
     });
   }
 });
-router.post("/pdfGeneration", (req, res) => {
+router.post('/pdfGeneration', (req, res) => {
   const {
     semester_no,
     evaluator_id,
@@ -343,19 +351,19 @@ router.post("/pdfGeneration", (req, res) => {
     sector_or_program,
   } = req.body;
   console.log(req.body);
-  if (to_get === "activity_list") {
+  if (to_get === 'activity_list') {
     getActivityList(conn, semester_no).then((data) => {
       res.json(data);
       res.end();
     });
-  } else if (to_get === "courseActivities") {
+  } else if (to_get === 'courseActivities') {
     getCourseActivityTable(
       conn,
       activity_type_id,
       sector_or_program,
       semester_no
     ).then((data) => {
-      console.log("At getcourseActiivty: ", data);
+      console.log('At getcourseActiivty: ', data);
       res.json(data);
       res.end();
     });
@@ -372,16 +380,16 @@ router.post("/pdfGeneration", (req, res) => {
   }
 });
 
-router.post("/activityBillData", (req, res) => {
+router.post('/activityBillData', (req, res) => {
   getBill(conn, req.body).then((data) => {
-    console.log("Data inside router", data);
+    console.log('Data inside router', data);
     res.json(data);
     res.end();
   });
 });
 
-router.get("/", (req, res) => {
-  conn.query("SELECT * from Login_Info", function (err, rows, fields) {
+router.get('/', (req, res) => {
+  conn.query('SELECT * from Login_Info', function (err, rows, fields) {
     if (err) throw err;
     console.log(rows);
     res.json({ rows });
