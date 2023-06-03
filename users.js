@@ -225,6 +225,71 @@ async function dropdownData(dropdownChanges) {
     }
   }
 }
+
+const fs = require('fs');
+const toBanglaNumber = require('./toBanglaNumber.js');
+
+router.post('/processDropDownData', async (req, res) => {
+  try {
+    const { dynamicOps, tableName, operation, cols, storageLabel } =
+      req.body.data.params;
+
+    // Read the existing JSON file
+    const filePath = './Data/dropdown_options.json';
+    const existingData = fs.readFileSync(filePath, 'utf-8');
+    const jsonData = JSON.parse(existingData);
+
+    if (dynamicOps == true) {
+      let colString = cols.join(', ');
+
+      let dataX = await processDropDownData(tableName, colString);
+      let result = dataX.map((item) => Object.values(item).join(' - '));
+      const dropdownOptions = result.reduce((acc, option) => {
+        const [id, name] = option.split(' - ');
+        const englishId = toEnglishNumber(id.trim().split(' ')[0]);
+        acc[englishId] = `${toBanglaNumber(id)}- ${name}`;
+        return acc;
+      }, {});
+      // Update or add data to the JSON file
+      if (jsonData[storageLabel]) {
+        // Data already exists, update it
+        jsonData[storageLabel] = dropdownOptions;
+      } else {
+        // Data does not exist, add it
+        jsonData[storageLabel] = dropdownOptions;
+      }
+      // console.log('After convering: ', dropdownOptions);
+
+      // Write the updated data back to the JSON file
+      fs.writeFile(filePath, JSON.stringify(jsonData), (err) => {
+        if (err) {
+          console.error(err);
+          res.status(500).json({ error: 'Error updating data' });
+          return;
+        }
+      });
+    }
+    res.json(JSON.stringify(jsonData));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error loading data' });
+  }
+});
+
+async function processDropDownData(tableName, colString) {
+  try {
+    let data = [];
+    let query = `SELECT DISTINCT ${colString} FROM ${tableName}`;
+    console.log(query);
+    data = await loadData(conn, null, null, query, null);
+    //console.log("Loaded data: ", data);
+    return data;
+  } catch (err) {
+    console.error(err);
+    throw new Error('Error loading data');
+  }
+}
+
 async function statusGenerator(data, error) {
   let message = 'Error!';
   if (data === undefined) {
