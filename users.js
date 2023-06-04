@@ -131,11 +131,20 @@ async function updateData(tableName, row, updatedData, getTableInfo) {
     console.log(row[primaryKeys[0]]);
     let pkValueString = '';
     for (let i = 0; i < pkLen; i++) {
+      // checking for primary key with course word -> exception
       if (dataTypes[primaryKeys[i]].localeCompare('int(11)') == 0)
         pkValueString += `${primaryKeys[i]} = ${toEnglishNumber(
           row[primaryKeys[i]]
         )}`;
-      else pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
+      else {
+        if (primaryKeys[i].includes('course')) {
+          pkValueString += `${primaryKeys[i]} = "${toEnglishNumber(
+            row[primaryKeys[i]]
+          )}"`;
+        } else {
+          pkValueString += `${primaryKeys[i]} = "${row[primaryKeys[i]]}"`;
+        }
+      }
       if (pkLen - 1 != i) pkValueString += ' and ';
     }
     console.log('PkvalueString: ', pkValueString);
@@ -187,7 +196,7 @@ async function insertData(tableName, row, getTableInfo) {
       if (row.hasOwnProperty(key)) {
         fields += `\`${key}\`, `;
         if (dataTypes[key].localeCompare('int(11)') == 0) {
-          val += `${row[key]}, `;
+          val += `${toEnglishNumber(row[key])}, `;
         } else {
           val += `"${row[key]}", `;
         }
@@ -231,55 +240,86 @@ const toBanglaNumber = require('./toBanglaNumber.js');
 
 router.post('/processDropDownData', async (req, res) => {
   try {
-    const { dynamicOps, tableName, operation, cols, storageLabel } =
-      req.body.data.params;
+    const {
+      dynamicOps,
+      tableName,
+      operation,
+      cols,
+      storageLabel,
+      condition,
+      value,
+    } = req.body.data.params;
 
     // Read the existing JSON file
     const filePath = './Data/dropdown_options.json';
     const existingData = fs.readFileSync(filePath, 'utf-8');
     const jsonData = JSON.parse(existingData);
 
-    if (dynamicOps == true) {
-      let colString = cols.join(', ');
-
-      let dataX = await processDropDownData(tableName, colString);
-      let result = dataX.map((item) => Object.values(item).join(' - '));
-      const dropdownOptions = result.reduce((acc, option) => {
-        const [id, name] = option.split(' - ');
-        const englishId = toEnglishNumber(id.trim().split(' ')[0]);
-        acc[englishId] = `${toBanglaNumber(id)}- ${name}`;
-        return acc;
-      }, {});
-      // Update or add data to the JSON file
-      if (jsonData[storageLabel]) {
-        // Data already exists, update it
-        jsonData[storageLabel] = dropdownOptions;
+    if (operation && operation == 'write') {
+      if (!jsonData[storageLabel]) {
+        jsonData[storageLabel] = [value];
       } else {
-        // Data does not exist, add it
-        jsonData[storageLabel] = dropdownOptions;
+        jsonData[storageLabel].push(value);
       }
-      // console.log('After convering: ', dropdownOptions);
-
-      // Write the updated data back to the JSON file
       fs.writeFile(filePath, JSON.stringify(jsonData), (err) => {
         if (err) {
           console.error(err);
           res.status(500).json({ error: 'Error updating data' });
           return;
         }
+        // After successfully writing to the file, make a response
+        res.json(JSON.stringify(jsonData));
       });
+    } else {
+      if (dynamicOps == true) {
+        let colString = cols.join(', ');
+
+        let dataX = await processDropDownData(tableName, colString, condition);
+        let result = dataX.map((item) => Object.values(item).join(' - '));
+        const dropdownOptions = result.reduce((acc, option) => {
+          const [id, name] = option.split(' - ');
+          console.log('spliting: ', id, name);
+          const englishId = toEnglishNumber(id.trim().split(' ')[0]);
+          if (tableName != 'Course') {
+            acc[englishId] = `${toBanglaNumber(id)}- ${name}`;
+          } else {
+            acc[englishId] = `${id} - ${name}`;
+          }
+          return acc;
+        }, {});
+        // Update or add data to the JSON file
+        // Data already exists, update it
+        jsonData[storageLabel] = dropdownOptions;
+        console.log('After convering: ', dropdownOptions);
+
+        // Write the updated data back to the JSON file
+        fs.writeFile(filePath, JSON.stringify(jsonData), (err) => {
+          if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Error updating data' });
+            return;
+          }
+          res.json(JSON.stringify(jsonData));
+        });
+      } else {
+        res.json(JSON.stringify(jsonData));
+      }
     }
-    res.json(JSON.stringify(jsonData));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error loading data' });
   }
 });
 
-async function processDropDownData(tableName, colString) {
+async function processDropDownData(tableName, colString, condition) {
   try {
     let data = [];
-    let query = `SELECT DISTINCT ${colString} FROM ${tableName}`;
+    let query = ``;
+    if (condition) {
+      query = `SELECT DISTINCT ${colString} FROM ${tableName} where ${condition}`;
+    } else {
+      query = `SELECT DISTINCT ${colString} FROM ${tableName}`;
+    }
     console.log(query);
     data = await loadData(conn, null, null, query, null);
     //console.log("Loaded data: ", data);
