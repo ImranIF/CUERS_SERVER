@@ -1,11 +1,11 @@
-require('dotenv').config()
+require('dotenv').config();
 var host = process.env.HOST;
 var port = process.env.PORT;
 var user = process.env.USER;
 var password = process.env.PASSWORD;
 var database = process.env.DATABASE;
 
-
+console.log(host);
 
 const { Router, query } = require('express'); //import Router class
 // const db = require('../database')
