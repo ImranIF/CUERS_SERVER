@@ -1,3 +1,9 @@
+require('dotenv').config()
+var host = process.env.HOST;
+var port = process.env.PORT;
+var user = process.env.USER;
+var password = process.env.PASSWORD;
+var database = process.env.DATABASE;
 const { Router, query } = require('express'); //import Router class
 // const db = require('../database')
 const router = Router();
@@ -21,11 +27,11 @@ const mariadb = require('mysql'); //import mariadb
 router.use(bodyParser.json());
 const conn = mariadb.createConnection({
   //allow us to import this file with database connection
-  host: 'h1p.h.filess.io',
-  port: '3305',
-  user: 'CUERS_realenter',
-  password: 'f031ad57d5d061a2c1003b21f5d9af7771fbfcce',
-  database: 'CUERS_realenter',
+  host: host,
+  port: port,
+  user: user,
+  password: password,
+  database: database,
 });
 
 router.use((req, res, next) => {
