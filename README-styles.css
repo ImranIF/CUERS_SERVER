@@ -1,0 +1,77 @@
+    @import 'https://cdn.tailwindcss.com/2.2.15/tailwind.min.css';
+
+  body {
+    @apply font-sans m-0 p-20;
+    background-image: linear-gradient(147deg, #f9fcff 0%, #dee4ea 74%);
+    color: #333;
+    box-sizing: border-box;
+  }
+
+  @keyframes bubbling {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  .img-display{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 0;
+  }
+  #js{
+    padding: 0 20px;
+    height: 60px;
+    width: 60px;
+    animation: bubbling 2s infinite;
+  }
+   
+  #express{
+    padding: 0 20px;
+    height: 60px;
+    width: 60px;
+    animation: bubbling 2s reverse infinite;
+  }
+
+  h1 {
+    @apply text-3xl font-bold text-gray-800;
+    margin-bottom: 20px;
+  }
+
+ h2 {
+    @apply text-2xl font-bold text-gray-800;
+    margin-bottom: 10px;
+  }
+
+  ul {
+    @apply mt-2 mb-8;
+  }
+
+  ul li {
+    @apply mb-2;
+  }
+
+  a {
+    @apply text-blue-500 no-underline;
+  }
+
+  a:hover {
+    @apply underline;
+  }
+
+  code {
+    @apply font-mono bg-gray-200 py-1 px-2 rounded-md;
+  }
+
+  pre {
+    @apply text-rose-50 p-4 rounded-md;
+    background-color: #2b4162;
+    background-image: linear-gradient(315deg, #2b4162 0%, #12100e 74%);
+    width: 50%;
+  } 
