@@ -1,11 +1,15 @@
 require('dotenv').config();
 var host = process.env.HOST;
 var port = process.env.PORT;
-var user = process.env.USER;
+var dbuser = process.env.DBUSER;
 var password = process.env.PASSWORD;
 var database = process.env.DATABASE;
 
 console.log(host);
+console.log(port);
+console.log(dbuser);
+console.log(password);
+console.log(database);
 
 const { Router, query } = require('express'); //import Router class
 // const db = require('../database')
@@ -32,11 +36,11 @@ const conn = mariadb.createConnection({
   //allow us to import this file with database connection
   host: host,
   port: port,
-  user: user,
+  user: dbuser,
   password: password,
   database: database,
 });
-
+console.log(conn);
 router.use((req, res, next) => {
   console.log('Request made to /USERS Route');
   next(); //needs to go to the middleware
@@ -430,11 +434,13 @@ router.post('/authenticatelogin', (req, res) => {
   const { evaluator_id, password, role } = req.body;
   console.log(evaluator_id, password, role);
   if (evaluator_id && password) {
+    //console.log(evaluator_id + role);
     const query = `
         select * from Login_Info
         where evaluator_id = "${evaluator_id}" and role = "${role}"
         `;
     conn.query(query, function (error, data) {
+      console.log(data);
       if (data?.length > 0) {
         for (var count = 0; count < data.length; count++) {
           if (
@@ -448,6 +454,7 @@ router.post('/authenticatelogin', (req, res) => {
           } else {
             return res.json({ msg: 'Incorrect Password' });
           }
+          console.log(res);
         }
       } else {
         return res.json({ msg: 'Incorrect Evaluator Id' });
